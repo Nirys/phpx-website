@@ -49,20 +49,21 @@ class AdminPanelProvider extends PanelProvider
 					->hidden(fn() => ! request()->attributes->has('group')),
 				NavigationItem::make('PHP×World')
 					->group('Resources')
-					->url('https://'.RootDomains::Production->value)
+					->url('https://' . RootDomains::Production->value)
 					->openUrlInNewTab()
 					->icon('heroicon-o-globe-alt'),
 				NavigationItem::make('For Organizers')
 					->group('Resources')
-					->url('https://'.RootDomains::Production->value.'/organizers')
+					->url('https://' . RootDomains::Production->value . '/organizers')
 					->openUrlInNewTab()
 					->icon('heroicon-o-document'),
 				NavigationItem::make('Running Events')
 					->group('Resources')
-					->url('https://'.RootDomains::Production->value.'/running-events')
+					->url('https://' . RootDomains::Production->value . '/running-events')
 					->openUrlInNewTab()
 					->icon('heroicon-o-document'),
 			])
+			->viteTheme('resources/css/filament/admin/theme.css')
 			->widgets([
 				// Widgets\AccountWidget::class,
 				// PlausibleWidget::class,

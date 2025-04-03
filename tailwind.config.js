@@ -6,6 +6,7 @@ export default {
 		"./resources/**/*.php",
 		"./resources/**/*.js",
 		"./resources/**/*.jsx",
+		"./resources/views/livewire/*.php"
 	],
 	darkMode: "selector",
 	theme: {

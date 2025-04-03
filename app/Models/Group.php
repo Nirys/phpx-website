@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\DomainStatus;
 use App\Enums\GroupStatus;
+use App\Facades\Bluesky as FacadesBluesky;
 use Glhd\Bits\Database\HasSnowflakes;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -52,7 +53,7 @@ class Group extends Model
 
 	protected static function booted()
 	{
-		static::saved(function(Group $group) {
+		static::saved(function (Group $group) {
 			Cache::forget('phpx-network');
 			Cache::forget("group:{$group->domain}");
 		});
@@ -92,13 +93,34 @@ class Group extends Model
 		return new Mailcoach($this->mailcoach_token, $this->mailcoach_endpoint);
 	}
 
+	public function bskyUserdid(): Attribute
+	{
+		return Attribute::make(function () {
+			$bsky = $this->bsky();
+			if (!$bsky) return '';
+			return Cache::remember('group-' . $this->id . '-bskydid', 3600, function () {
+				return FacadesBluesky::getProfile($this)->did;
+			});
+		});
+	}
+
 	public function bsky(): Factory|Bluesky|null
 	{
 		if (! $this->isBskyConnected()) {
 			return null;
 		}
 
-		return Bluesky::login(identifier: $this->bsky_did, password: $this->bsky_app_password);
+		$existingSession = Cache::get('group-' . $this->id . '-bsky');
+		if ($existingSession) {
+			$bsky = Bluesky::withToken($existingSession);
+			if ($bsky->agent()->tokenExpired()) {
+				$bsky->agent()->refreshSession();
+			}
+		} else {
+			$bsky = Bluesky::login(identifier: $this->bsky_did, password: $this->bsky_app_password);
+			Cache::put('group-' . $this->id . '-bsky', $bsky->agent()->session(), now()->addDay());
+		}
+		return $bsky;
 	}
 
 	public function url(string $path, array $parameters = [], bool $secure = true): string
@@ -106,7 +128,7 @@ class Group extends Model
 		$generator = app(UrlGenerator::class);
 
 		try {
-			$generator->forceRootUrl('https://'.$this->domain);
+			$generator->forceRootUrl('https://' . $this->domain);
 			return $generator->to($path, $parameters, $secure);
 		} finally {
 			$generator->forceRootUrl(null);
@@ -159,12 +181,12 @@ class Group extends Model
 
 	protected function openGraphImageUrl(): Attribute
 	{
-		return Attribute::get(function() {
+		return Attribute::get(function () {
 			$filename = $this->airport_code->lower()->finish('.png');
 			$path = public_path("og/{$filename}");
 
 			if (file_exists($path)) {
-				return asset("og/{$filename}").'?t='.filemtime($path);
+				return asset("og/{$filename}") . '?t=' . filemtime($path);
 			}
 
 			return null;
